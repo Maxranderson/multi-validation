@@ -9,15 +9,17 @@ trait CoreTypes {
 
   /**
     * The Rule Type that will validated the Intermediary Data
-    * @tparam T Intermediary Type
+    * @tparam A Intermediary Type
+    * @tparam B Intermediary Type Transformed
     */
-  type Rule[T] = Kleisli[Try, T, (T, Seq[Validated])]
+  type Rule[A, B] = Kleisli[Try, A, (B, Seq[Validated])]
 
   /**
     * The Step Type that represents a step of validation
-    * @tparam T
+    * @tparam A Intermediary Type
+    * @tparam B Intermediary Type Transformed
     */
-  type Step[T] = Kleisli[Try, T, (T, Seq[Validated], Boolean)]
+  type Step[A, B] = Kleisli[Try, A, (B, Seq[Validated], Boolean)]
 
   /**
     * A Validation that can be validate the Init Data and result the Final Data

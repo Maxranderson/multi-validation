@@ -3,39 +3,39 @@ package multivalidation.ops
 import cats.data.Kleisli
 import multivalidation.{CoreTypes, Validated}
 import cats.implicits._
-import multivalidation.parsers.Folder
+import multivalidation.parsers.Parser
 
 import scala.util.Try
 
 trait RuleOps {
   self: CoreTypes =>
 
-  implicit class RuleOperator[T](rule: Rule[T]) {
+  implicit class RuleOperator[T, TT](rule: Rule[T, TT]) {
 
     /**
       * Create a Rule that execute the first Rule,
       * execute the second Rule and combine their results.
       *
       * @param rule2  second Rule to be combined
-      * @param folder Parser for TT to T and combine T and TT types
-      * @tparam TT Intermediary Type
+      * @param parser Parser for TT to A
+      * @tparam A Intermediary Type
+      * @tparam B Intermediary Type Transformed
       * @return a Rule
       */
-    def combine[TT](rule2: Rule[TT])(implicit folder: Folder[T, TT]): Rule[TT] =
-      Kleisli { tt: TT =>
+    def combine[A, B](rule2: Rule[A, B])(implicit parser: Parser[TT, A]): Rule[T, B] =
+      Kleisli { t: T =>
         for {
-          t <- folder.parse(tt)
           r1 <- rule.run(t)
-          merged <- folder.fold(r1._1, tt)
-          r2 <- rule2.run(merged)
-        } yield r2.copy(r2._1, r1._2 ++ r2._2)
+          parsed <- parser.parse(r1._1)
+          r2 <- rule2.run(parsed)
+        } yield (r2._1, r1._2 ++ r2._2)
       }
 
     /**
       * Transform a Rule to Step
       * @return A Step with type T
       */
-    def toStep: Step[T] = Kleisli { t: T =>
+    def toStep: Step[T, TT] = Kleisli { t: T =>
       for {
         r <- rule.run(t)
       } yield (r._1, r._2, r._2.exists(_.isInvalid))
@@ -61,7 +61,7 @@ trait RuleOps {
       * @tparam T Intermediary Type
       * @return A Rule
       */
-    def verify[T](verifier: T => Validated): Rule[T] = build[T](t => (t, verifier(t)))
+    def verify[T](verifier: T => Validated): Rule[T, T] = build[T](t => (t, verifier(t)))
 
     /**
       * Create a Rule from verifier
@@ -69,7 +69,7 @@ trait RuleOps {
       * @tparam T Intermediary Type
       * @return A Rule
       */
-    def build[T](verifier: T => (T, Validated)): Rule[T] =
+    def build[T](verifier: T => (T, Validated)): Rule[T, T] =
       Kleisli { t: T =>
         Try {
           verifier.andThen(t =>
