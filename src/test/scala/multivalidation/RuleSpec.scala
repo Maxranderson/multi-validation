@@ -1,8 +1,9 @@
 package multivalidation
 
 import org.scalatest.WordSpec
-import multivalidation.parsers.Folder
+import multivalidation.parsers.Parser
 import TestBuilder._
+
 import scala.util.{Success, Try}
 
 class RuleSpec extends WordSpec {
@@ -55,16 +56,16 @@ class RuleSpec extends WordSpec {
     "combined with a rule of another type" should {
       "run with parser and reducer and return one invalid" in {
         case class AnotherData(n: Int)
-        implicit val folder: Folder[EntryData, (EntryData, AnotherData)] = new Folder[EntryData, (EntryData, AnotherData)] {
-          override def fold(a: EntryData, b: (EntryData, AnotherData)): Try[(EntryData, AnotherData)] = Try((a, b._2))
-
-          override def parse(a: (EntryData, AnotherData)): Try[EntryData] = Try(a._1)
+        def buildParser(anotherData: AnotherData): Parser[EntryData, (EntryData, AnotherData)] = new Parser[EntryData, (EntryData, AnotherData)] {
+          override def parse(a: EntryData): Try[(EntryData, AnotherData)] = Try((a, anotherData))
         }
-        val entryData = (EntryData(""), AnotherData(1))
+        val entryData = EntryData("")
+        val finalData = (EntryData(""), AnotherData(1))
         val invalidNumber = Invalid("Invalid number")
         val r1 = Rule.verify[EntryData](_ => Valid)
         val r2 = Rule.verify[(EntryData, AnotherData)]{ case (_, another) => if(another.n < 2) invalidNumber else Valid}
-        assert((r1 combine r2).run(entryData) == Success(entryData, Seq(invalidNumber)))
+        implicit val parser = buildParser(finalData._2)
+        assert((r1 combine r2).run(entryData) == Success(finalData, Seq(invalidNumber)))
       }
     }
   }

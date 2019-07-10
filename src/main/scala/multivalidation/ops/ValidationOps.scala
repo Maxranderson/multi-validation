@@ -51,7 +51,7 @@ trait ValidationOps[A] { self: CoreTypes with StepOps[A] with RuleOps =>
       * @tparam C Final Type
       * @return A Validation
       */
-    def caseOf[T, C](f: PartialFunction[A, Step[T]])(implicit parser: Parser[A, T], parser2: Parser[T, C]): Validation[A, C] =
+    def caseOf[T, C](f: PartialFunction[A, Step[T, T]])(implicit parser: Parser[A, T], parser2: Parser[T, C]): Validation[A, C] =
       Kleisli(a => f.lift(a).flatMap(step => step.toValidation.run(a)))
 
     /**
@@ -64,7 +64,7 @@ trait ValidationOps[A] { self: CoreTypes with StepOps[A] with RuleOps =>
       * @tparam C Final Type
       * @return A Validation
       */
-    def ofCond[T, C](cond: A => Boolean)(step: Step[T])(implicit parser: Parser[A, T], parser2: Parser[T, C]): Validation[A, C] =
+    def ofCond[T, C](cond: A => Boolean)(step: Step[T, T])(implicit parser: Parser[A, T], parser2: Parser[T, C]): Validation[A, C] =
       Kleisli(a => Option(a).filter(cond).flatMap(_ => step.toValidation.run(a)))
 
     /**
@@ -76,7 +76,7 @@ trait ValidationOps[A] { self: CoreTypes with StepOps[A] with RuleOps =>
       * @tparam C Final Type
       * @return A Validation
       */
-    def of[T, C](step: Step[T])(implicit parser: Parser[A, T], parser2: Parser[T, C]): Validation[A, C] =
+    def of[T, C](step: Step[T, T])(implicit parser: Parser[A, T], parser2: Parser[T, C]): Validation[A, C] =
       Kleisli(a => step.toValidation.run(a))
   }
 
