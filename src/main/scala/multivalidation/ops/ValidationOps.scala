@@ -18,17 +18,17 @@ trait ValidationOps[A] { self: CoreTypes with StepOps[A] with RuleOps =>
 
     /**
       * Transform Validation to Validator with notFound param as default result
-      * @param notFound Default result
+      * @param default Default result
       * @return A Validator
       */
-    def orNotFound(notFound: Try[ValidationResult[C]]): Validator[A, C] = Kleisli(a => validation.run(a).getOrElse(notFound))
+    def orDefaultResult(default: Try[ValidationResult[C]]): Validator[A, C] = Kleisli(a => validation.run(a).getOrElse(default))
 
     /**
       * Transform Validation to Validator with a default Validation
-      * @param notFound
+      * @param default
       * @return
       */
-    def orNotFound(notFound: Validation[A, C]): Validator[A, C] = Kleisli(a => validation and notFound run a getOrElse Failure(new Exception(s"Validation not implemented for $a")))
+    def orDefault(default: Validation[A, C]): Validator[A, C] = Kleisli(a => validation or default run a getOrElse Failure(new Exception(s"Validation not implemented for $a")))
 
     private def toKleisli[C](validation: Validation[A, C]): Kleisli[Option, A, Try[ValidationResult[C]]] = validation
 
@@ -37,7 +37,7 @@ trait ValidationOps[A] { self: CoreTypes with StepOps[A] with RuleOps =>
       * @param validation2 Second Validation
       * @return A Validation
       */
-    def and(validation2: Validation[A, C]): Validation[A, C] = toKleisli(validation) <+> validation2
+    def or(validation2: Validation[A, C]): Validation[A, C] = toKleisli(validation) <+> validation2
   }
 
   object Validation {
@@ -65,7 +65,7 @@ trait ValidationOps[A] { self: CoreTypes with StepOps[A] with RuleOps =>
       * @return A Validation
       */
     def ofCond[T, C](cond: A => Boolean)(step: Step[T, T])(implicit parser: Parser[A, T], parser2: Parser[T, C]): Validation[A, C] =
-      Kleisli(a => Option(a).filter(cond).flatMap(_ => step.toValidation.run(a)))
+      Kleisli(a => step.toValidationOfCond[C](cond).run(a))
 
     /**
       * Create a validation from Step

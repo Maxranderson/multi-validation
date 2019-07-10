@@ -77,7 +77,7 @@ class ValidationSpec extends WordSpec {
           Rule.verify[EntryData](e => if(e.str.length < 2) invalidStringSize else Valid).toStep
       }
 
-      assert((validation1 and validation2).run(entryData).contains(Success(FailureResult(Seq(invalidStringSize)))))
+      assert((validation1 or validation2).run(entryData).contains(Success(FailureResult(Seq(invalidStringSize)))))
     }
   }
 

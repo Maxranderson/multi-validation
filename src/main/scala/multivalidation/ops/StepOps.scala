@@ -53,6 +53,27 @@ trait StepOps[A] { self: CoreTypes with RuleOps =>
           } yield res
         }
       }
+
+    /**
+      * Transform a Step into a Validation
+      * @param parser Parser for Init data to Intermediary data
+      * @param parser2 Parser for Intermediary data to Final data
+      * @tparam C The final class to be build
+      * @return a Validation
+      */
+    def toValidationOfCond[C](cond: A => Boolean)(implicit parser: Parser[A, T], parser2: Parser[TT, C]): Validation[A, C] =
+      Kleisli[Option, A, Try[ValidationResult[C]]] { a =>
+        Option(a).filter(cond).map { a =>
+          for {
+            t <- parser.parse(a)
+            res <- step.run(t).flatMap {
+              case (_, vs, bool) if bool => Success(FailureResult(vs))
+              case (t, vs, _) if vs.nonEmpty => parser2.parse(t).map(AlmostResult(vs, _))
+              case (t, _, _) => parser2.parse(t).map(SuccessResult.apply)
+            }
+          } yield res
+        }
+      }
   }
 
 }
