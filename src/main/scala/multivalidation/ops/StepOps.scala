@@ -15,20 +15,58 @@ trait StepOps[A] { self: CoreTypes with RuleOps =>
       * execute the second Step if the first step not return invalid results, and combine their results.
       *
       * @param step2 second Step to be combined
-      * @param folder Parser for TT to T and combine T and TT types
-      * @tparam AA Intermediary Type
-      * @tparam B Intermediary Type Transformed
-      * @return a Step with type TT
+      * @param parser Parser for TT to C
+      * @param parser2 Parser for (D, TT) to TT
+      * @tparam C Intermediary Type
+      * @tparam D Intermediary Type
+      * @return a Step with the same left type
       */
-    def combine[AA, B](step2: Step[AA, TT])(implicit folder: Parser[TT, AA]): Step[T, TT] =
+    def <+[C, D](step2: Step[C, D])(implicit parser: Parser[TT, C], parser2: Parser[(D, TT), TT]): Step[T, TT] =
       Kleisli { t: T =>
         step.run(t) match {
           case Success(value) if value._3 => Try(value)
           case Success(value) =>
             for {
-              reduced <- folder.parse(value._1)
+              c <- parser.parse(value._1)
+              r <- step2.run(c)
+              parsed <- parser2.parse((r._1, value._1))
+            } yield (parsed, r._2, r._3)
+          case Failure(e) => Failure(e)
+        }
+      }
+
+    def ++[C, D](step2: Step[C, D])(implicit parser: Parser[TT, C], parser2: Parser[(TT, T), D]): Step[T, D] =
+      Kleisli { t: T =>
+        step.run(t) match {
+          case Success(value) if value._3 => parser2.parse((value._1, t)).map(d => value.copy(_1 = d))
+          case Success(value) =>
+            for {
+              reduced <- parser.parse(value._1)
               r <- step2.run(reduced)
-            } yield (r._1, r._2, r._3)
+            } yield r
+          case Failure(e) => Failure(e)
+        }
+      }
+
+    /**
+      * Create a Step that execute the first Step,
+      * execute the second Step if the first step not return invalid results, and combine their results.
+      *
+      * @param step2 second Step to be combined
+      * @param parser Parser for TT to T and combine T and TT types
+      * @tparam C Intermediary Type
+      * @tparam D Intermediary Type
+      * @return a Step with the same right type
+      */
+    def +>[C, D](step2: Step[C, D])(implicit parser: Parser[C, T], parser2: Parser[(TT, C), D], parser3: Parser[(TT, C), C]): Step[C, D] =
+      Kleisli { c: C =>
+        parser.parse(c).flatMap(step.run) match {
+          case Success(value) if value._3 => parser2.parse((value._1, c)).map(d => value.copy(_1 = d))
+          case Success(value) =>
+            for {
+              c <- parser3.parse((value._1, c))
+              res <- step2.run(c)
+            } yield res
           case Failure(e) => Failure(e)
         }
       }

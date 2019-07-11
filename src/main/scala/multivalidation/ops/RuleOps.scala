@@ -13,6 +13,55 @@ trait RuleOps {
   implicit class RuleOperator[T, TT](rule: Rule[T, TT]) {
 
     /**
+      * Create a Step that execute the first Step,
+      * execute the second Step if the first step not return invalid results, and combine their results.
+      *
+      * @param step2 second Step to be combined
+      * @param parser Parser for TT to C
+      * @param parser2 Parser for (D, TT) to TT
+      * @tparam C Intermediary Type
+      * @tparam D Intermediary Type
+      * @return a Step with the same left type
+      */
+    def <+[C, D](rule2: Rule[C, D])(implicit parser: Parser[TT, C], parser2: Parser[(D, TT), TT]): Rule[T, TT] =
+      Kleisli { t: T =>
+        for {
+          r1 <- rule.run(t)
+          c <- parser.parse(r1._1)
+          r2 <- rule2.run(c)
+          parsed <- parser2.parse((r2._1, r1._1))
+        } yield (parsed, r1._2 ++ r2._2)
+      }
+
+    def ++[C, D](rule2: Rule[C, D])(implicit parser: Parser[TT, C]): Rule[T, D] =
+      Kleisli { t: T =>
+        for {
+          r1 <- rule.run(t)
+          c <- parser.parse(r1._1)
+          r2 <- rule2.run(c)
+        } yield (r2._1, r1._2 ++ r2._2)
+      }
+
+    /**
+      * Create a Step that execute the first Step,
+      * execute the second Step if the first step not return invalid results, and combine their results.
+      *
+      * @param step2 second Step to be combined
+      * @param parser Parser for TT to T and combine T and TT types
+      * @tparam C Intermediary Type
+      * @tparam D Intermediary Type
+      * @return a Step with the same right type
+      */
+    def +>[C, D](rule2: Step[C, D])(implicit parser: Parser[TT, C]): Rule[C, D] =
+      Kleisli { t: C =>
+        for {
+          r1 <- rule.run(t)
+          c <- parser.parse(r1._1)
+          r2 <- rule2.run(c)
+        } yield (r2._1, r1._2 ++ r2._2)
+      }
+
+    /**
       * Create a Rule that execute the first Rule,
       * execute the second Rule and combine their results.
       *
