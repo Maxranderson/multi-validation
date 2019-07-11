@@ -15,7 +15,7 @@ class StepSpec extends WordSpec {
         val entryData = EntryData("")
         val step1 = Rule.verify[EntryData](_ => Valid).toStep
         val step2 = Rule.verify[EntryData](e => if(e.str.length < 2) invalidStringSize else Valid).toStep
-        assert((step1 combine step2).run(entryData) == Success(entryData, Seq(invalidStringSize), true))
+        assert((step1 ++ step2).run(entryData) == Success(entryData, Seq(invalidStringSize), true))
       }
     }
     "return a invalid and combined with another step" should {
@@ -25,7 +25,7 @@ class StepSpec extends WordSpec {
         val entryData = EntryData("")
         val step1 = Rule.verify[EntryData](e => if(e.str.isEmpty) invalidStringEmpty else Valid).toStep
         val step2 = Rule.verify[EntryData](e => if(e.str.length < 2) invalidStringSize else Valid).toStep
-        assert((step1 combine step2).run(entryData) == Success(entryData, Seq(invalidStringEmpty), true))
+        assert((step1 ++ step2).run(entryData) == Success(entryData, Seq(invalidStringEmpty), true))
       }
     }
     "return valid result and combined with another step" should {
@@ -33,7 +33,7 @@ class StepSpec extends WordSpec {
         val entryData = EntryData("")
         val step1 = Rule.verify[EntryData](_ => Valid).toStep
         val step2 = Rule.verify[EntryData](_ => Valid).toStep
-        assert((step1 combine step2).run(entryData) == Success(entryData, Seq.empty, false))
+        assert((step1 ++ step2).run(entryData) == Success(entryData, Seq.empty, false))
       }
     }
   }
@@ -46,7 +46,7 @@ class StepSpec extends WordSpec {
     }
     val step1 = Rule.verify[EntryData](_ => Valid).toStep
     val step2 = Rule.verify[EntryData](_ => Valid).toStep
-    val steps = step1 combine step2
+    val steps = step1 ++ step2
     assert(steps.toValidation[FinalData].run(entryData).contains(Success(SuccessResult(FinalData(1)))))
   }
 

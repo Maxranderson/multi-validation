@@ -52,31 +52,13 @@ trait RuleOps {
       * @tparam D Intermediary Type
       * @return a Step with the same right type
       */
-    def +>[C, D](rule2: Step[C, D])(implicit parser: Parser[TT, C]): Rule[C, D] =
-      Kleisli { t: C =>
+    def +>[C, D](rule2: Step[C, D])(implicit parser: Parser[C, T], parser2: Parser[(TT, C), C]): Rule[C, D] =
+      Kleisli { c: C =>
         for {
+          t <- parser.parse(c)
           r1 <- rule.run(t)
-          c <- parser.parse(r1._1)
+          c <- parser2.parse((r1._1, c))
           r2 <- rule2.run(c)
-        } yield (r2._1, r1._2 ++ r2._2)
-      }
-
-    /**
-      * Create a Rule that execute the first Rule,
-      * execute the second Rule and combine their results.
-      *
-      * @param rule2  second Rule to be combined
-      * @param parser Parser for TT to A
-      * @tparam A Intermediary Type
-      * @tparam B Intermediary Type Transformed
-      * @return a Rule
-      */
-    def combine[A, B](rule2: Rule[A, B])(implicit parser: Parser[TT, A]): Rule[T, B] =
-      Kleisli { t: T =>
-        for {
-          r1 <- rule.run(t)
-          parsed <- parser.parse(r1._1)
-          r2 <- rule2.run(parsed)
         } yield (r2._1, r1._2 ++ r2._2)
       }
 
