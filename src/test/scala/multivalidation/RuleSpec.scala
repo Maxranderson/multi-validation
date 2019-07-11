@@ -34,7 +34,7 @@ class RuleSpec extends WordSpec {
         val entryData = EntryData("")
         val r1 = Rule.verify[EntryData](e => if(e.str.isEmpty) invalidStringEmpty else Valid)
         val r2 = Rule.verify[EntryData](e => if(e.str.length < 2) invalidStringSize else Valid)
-        assert((r1 combine r2).run(entryData) == Success(entryData, Seq(invalidStringEmpty, invalidStringSize)))
+        assert((r1 ++ r2).run(entryData) == Success(entryData, Seq(invalidStringEmpty, invalidStringSize)))
       }
 
       "return one almost result" in {
@@ -42,14 +42,14 @@ class RuleSpec extends WordSpec {
         val entryData = EntryData("")
         val r1 = Rule.verify[EntryData](_ => Valid)
         val r2 = Rule.verify[EntryData](e => if(e.str.length < 2) invalidStringSize else Valid)
-        assert((r1 combine r2).run(entryData) == Success(entryData, Seq(invalidStringSize)))
+        assert((r1 ++ r2).run(entryData) == Success(entryData, Seq(invalidStringSize)))
       }
 
       "return empty seq result" in {
         val entryData = EntryData("")
         val r1 = Rule.verify[EntryData](_ => Valid)
         val r2 = Rule.verify[EntryData](_ => Valid)
-        assert((r1 combine r2).run(entryData) == Success(entryData, Seq.empty) )
+        assert((r1 ++ r2).run(entryData) == Success(entryData, Seq.empty) )
       }
     }
 
@@ -65,7 +65,7 @@ class RuleSpec extends WordSpec {
         val r1 = Rule.verify[EntryData](_ => Valid)
         val r2 = Rule.verify[(EntryData, AnotherData)]{ case (_, another) => if(another.n < 2) invalidNumber else Valid}
         implicit val parser = buildParser(finalData._2)
-        assert((r1 combine r2).run(entryData) == Success(finalData, Seq(invalidNumber)))
+        assert((r1 ++ r2).run(entryData) == Success(finalData, Seq(invalidNumber)))
       }
     }
   }
@@ -93,7 +93,7 @@ class RuleSpec extends WordSpec {
     val entryData = EntryData("")
     val r1 = Rule.verify[EntryData](e => if(e.str.isEmpty) invalidStringEmpty else Valid)
     val r2 = Rule.verify[EntryData](e => if(e.str.length < 2) invalidStringSize else Valid)
-    assert((r1 combine r2 toStep).run(entryData) == Success(entryData, Seq(invalidStringEmpty, invalidStringSize), true))
+    assert((r1 ++ r2 toStep).run(entryData) == Success(entryData, Seq(invalidStringEmpty, invalidStringSize), true))
   }
 
 }
