@@ -17,6 +17,14 @@ case object Valid extends Validated {
 }
 
 class Almost(val msg: String) extends Validated {
+
+  override def equals(obj: Any): Boolean = obj match {
+    case o: Almost => msg == o.msg
+    case _ => false
+  }
+
+  override def toString: String = s"Almost($msg)"
+
   override def isInvalid: Boolean = false
 
   override def isAlmost: Boolean = true
@@ -29,6 +37,14 @@ object Almost {
 }
 
 class Invalid(val msg: String) extends Validated {
+
+  override def equals(obj: Any): Boolean = obj match {
+    case o: Invalid => msg == o.msg
+    case _ => false
+  }
+
+  override def toString: String = s"Invalid($msg)"
+
   override def isInvalid: Boolean = true
 
   override def isAlmost: Boolean = false
