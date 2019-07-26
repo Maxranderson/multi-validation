@@ -24,26 +24,36 @@ trait StepOps[A] { self: CoreTypes with RuleOps =>
     def <+[C, D](step2: Step[C, D])(implicit parser: Parser[TT, C], parser2: Parser[(D, TT), TT]): Step[T, TT] =
       Kleisli { t: T =>
         step.run(t) match {
-          case Success(value) if value._3 => Try(value)
           case Success(value) =>
-            for {
-              c <- parser.parse(value._1)
-              r <- step2.run(c)
-              parsed <- parser2.parse((r._1, value._1))
-            } yield (parsed, r._2, r._3)
+            value._1.map { v1 =>
+              for {
+                c <- parser.parse(v1)
+                r <- step2.run(c)
+                res <- r._1.map { d =>
+                  parser2.parse((d, v1)).map(tt => (Option(tt), r._2))
+                } getOrElse {
+                  Try((Option.empty[TT], r._2))
+                }
+              } yield res
+            } getOrElse {
+              Try((Option.empty[TT], value._2))
+            }
           case Failure(e) => Failure(e)
         }
       }
 
-    def ++[C, D](step2: Step[C, D])(implicit parser: Parser[TT, C], parser2: Parser[(TT, T), D]): Step[T, D] =
+    def ++[C, D](step2: Step[C, D])(implicit parser: Parser[TT, C]): Step[T, D] =
       Kleisli { t: T =>
         step.run(t) match {
-          case Success(value) if value._3 => parser2.parse((value._1, t)).map(d => value.copy(_1 = d))
           case Success(value) =>
-            for {
-              reduced <- parser.parse(value._1)
-              r <- step2.run(reduced)
-            } yield r
+            value._1.map { v1 =>
+              for {
+                reduced <- parser.parse(v1)
+                r <- step2.run(reduced)
+              } yield r
+            } getOrElse {
+              Try((Option.empty[D], value._2))
+            }
           case Failure(e) => Failure(e)
         }
       }
@@ -58,15 +68,18 @@ trait StepOps[A] { self: CoreTypes with RuleOps =>
       * @tparam D Intermediary Type
       * @return a Step with the same right type
       */
-    def +>[C, D](step2: Step[C, D])(implicit parser: Parser[C, T], parser2: Parser[(TT, C), D], parser3: Parser[(TT, C), C]): Step[C, D] =
+    def +>[C, D](step2: Step[C, D])(implicit parser: Parser[C, T], parser3: Parser[(TT, C), C]): Step[C, D] =
       Kleisli { c: C =>
         parser.parse(c).flatMap(step.run) match {
-          case Success(value) if value._3 => parser2.parse((value._1, c)).map(d => value.copy(_1 = d))
           case Success(value) =>
-            for {
-              c <- parser3.parse((value._1, c))
-              res <- step2.run(c)
-            } yield res
+            value._1.map { v1 =>
+              for {
+                c <- parser3.parse((v1, c))
+                res <- step2.run(c)
+              } yield res
+            } getOrElse {
+              Try((Option.empty[D], value._2))
+            }
           case Failure(e) => Failure(e)
         }
       }
@@ -79,18 +92,7 @@ trait StepOps[A] { self: CoreTypes with RuleOps =>
       * @return a Validation
       */
     def toValidation[C](implicit parser: Parser[A, T], parser2: Parser[TT, C]): Validation[A, C] =
-      Kleisli[Option, A, Try[ValidationResult[C]]] { a =>
-        Option {
-          for {
-            t <- parser.parse(a)
-            res <- step.run(t).flatMap {
-              case (_, vs, bool) if bool => Success(FailureResult(vs))
-              case (t, vs, _) if vs.nonEmpty => parser2.parse(t).map(AlmostResult(vs, _))
-              case (t, _, _) => parser2.parse(t).map(SuccessResult.apply)
-            }
-          } yield res
-        }
-      }
+      toValidationOfCond(_ => true)
 
     /**
       * Transform a Step into a Validation
@@ -105,9 +107,9 @@ trait StepOps[A] { self: CoreTypes with RuleOps =>
           for {
             t <- parser.parse(a)
             res <- step.run(t).flatMap {
-              case (_, vs, bool) if bool => Success(FailureResult(vs))
-              case (t, vs, _) if vs.nonEmpty => parser2.parse(t).map(AlmostResult(vs, _))
-              case (t, _, _) => parser2.parse(t).map(SuccessResult.apply)
+              case (Some(t), vs) if vs.nonEmpty => parser2.parse(t).map(AlmostResult(vs, _))
+              case (Some(t), _) => parser2.parse(t).map(SuccessResult.apply)
+              case (None, vs) => Success(FailureResult(vs))
             }
           } yield res
         }

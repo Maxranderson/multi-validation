@@ -52,7 +52,7 @@ trait RuleOps {
       * @tparam D Intermediary Type
       * @return a Step with the same right type
       */
-    def +>[C, D](rule2: Step[C, D])(implicit parser: Parser[C, T], parser2: Parser[(TT, C), C]): Rule[C, D] =
+    def +>[C, D](rule2: Rule[C, D])(implicit parser: Parser[C, T], parser2: Parser[(TT, C), C]): Rule[C, D] =
       Kleisli { c: C =>
         for {
           t <- parser.parse(c)
@@ -69,7 +69,7 @@ trait RuleOps {
     def toStep: Step[T, TT] = Kleisli { t: T =>
       for {
         r <- rule.run(t)
-      } yield (r._1, r._2, r._2.exists(_.isInvalid))
+      } yield (Option(r._1).filterNot(_ => r._2.exists(_.isInvalid)), r._2)
     }
   }
 

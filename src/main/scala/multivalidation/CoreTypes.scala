@@ -19,7 +19,7 @@ trait CoreTypes {
     * @tparam A Intermediary Type
     * @tparam B Intermediary Type Transformed
     */
-  type Step[A, B] = Kleisli[Try, A, (B, Seq[Validated], Boolean)]
+  type Step[A, B] = Kleisli[Try, A, (Option[B], Seq[Validated])]
 
   /**
     * A Validation that can be validate the Init Data and result the Final Data

@@ -93,7 +93,7 @@ class RuleSpec extends WordSpec {
     val entryData = EntryData("")
     val r1 = Rule.verify[EntryData](e => if(e.str.isEmpty) invalidStringEmpty else Valid)
     val r2 = Rule.verify[EntryData](e => if(e.str.length < 2) invalidStringSize else Valid)
-    assert((r1 ++ r2 toStep).run(entryData) == Success(entryData, Seq(invalidStringEmpty, invalidStringSize), true))
+    assert((r1 ++ r2 toStep).run(entryData) == Success(None, Seq(invalidStringEmpty, invalidStringSize)))
   }
 
 }
